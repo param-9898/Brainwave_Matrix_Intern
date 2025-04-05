@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Password Strength Checker</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            background: linear-gradient(135deg, #f0f0f0, #d9d9d9);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            position: relative;
+            overflow: hidden;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            width: 400px;
+            text-align: center;
+            position: relative;
+            z-index: 1; /* Ensure the container is above the images */
+        }
+        .password-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+            width: 100%;
+        }
+        #password {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #ccc;
+            border-radius: 5px;
+            transition: border-color 0.3s;
+            font-size: 16px;
+            padding-right: 40px; /* Add padding to the right for the eye button */
+        }
+        #toggle-password {
+            cursor: pointer;
+            background: none;
+            border: none;
+            outline: none;
+            font-size: 18px; /* Adjust size for better visibility */
+            padding: 10px; /* Add padding for better click area */
+            margin-left: -40px; /* Adjust position to overlap with the input */
+            z-index: 1; /* Ensure the button is above the input */
+        }
+        #strength {
+            margin-top: 10px;
+            font-weight: bold;
+            height: 20px;
+            border-radius: 5px;
+            transition: width 0.3s, background-color 0.3s;
+            display: none; /* Initially hidden */
+        }
+        .weak {
+            border-color: red;
+            background-color: rgba(255, 0, 0, 0.1);
+        }
+        .medium {
+            border-color: orange;
+            background-color: rgba(255, 165, 0, 0.1);
+        }
+        .strong {
+            border-color: green;
+            background-color: rgba(0, 128, 0, 0.1);
+        }
+        .meter {
+            height: 10px;
+            border-radius: 5px;
+            background: #e0e0e0;
+            margin-top: 5px;
+            width: 100%;
+            display: none; /* Initially hidden */
+        }
+        .meter-fill {
+            height: 100%;
+            border-radius: 5px;
+            transition: width 0.3s;
+        }
+        .slideshow {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            z-index: 0; /* Ensure the slideshow is behind the container */
+        }
+        .slideshow img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            position: absolute;
+            opacity: 0;
+            transition: opacity 1s ease-in-out;
+        }
+        .slideshow img.active {
+            opacity: 1;
+        }
+        button {
+            margin-top: 15px;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            background-color: #007bff;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <div class="slideshow">
+        <img src="{{ url_for('static', filename='cyber.jpg') }}" class="active">
+        <img src="{{ url_for('static', filename='p1.jpeg') }}">
+        <img src="{{ url_for('static', filename='p2.jpeg') }}">
+        <img src="{{ url_for('static', filename='p3.jpeg') }}">
+        <img src="{{ url_for('static', filename='p4.jpeg') }}">
+        <img src="{{ url_for('static', filename='p5.jpeg') }}">
+    </div>
+
+    <div class="container">
+        <h1>Password Strength Checker</h1>
+        <div class="password-wrapper">
+            <input type="password" id="password" placeholder="Enter your password" required>
+            <button id="toggle-password" title="Show/Hide Password">
+                👁️
+            </button>
+        </div>
+        <div id="strength" class="meter">
+            <div id="strength-fill" class="meter-fill"></div>
+        </div>
+        <div id="strength-text"></div>
+        <button id="submit-button">Submit</button>
+    </div>
+
+    <script>
+        // Slideshow functionality
+        const slides = document.querySelectorAll('.slideshow img');
+        let currentSlide = 0;
+
+        function showNextSlide() {
+            slides[currentSlide].classList.remove('active');
+            currentSlide = (currentSlide + 1) % slides.length;
+            slides[currentSlide].classList.add('active');
+        }
+
+        setInterval(showNextSlide, 3000); // Change slide every 3 seconds
+
+        // Toggle password visibility
+        const togglePasswordButton = document.getElementById('toggle-password');
+        togglePasswordButton.addEventListener('click', function() {
+            const passwordInput = document.getElementById('password');
+            const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+            passwordInput.setAttribute('type', type);
+            this.textContent = type === 'password' ? '👁️' : '🙈'; // Change icon based on visibility
+        });
+
+        // Submit button functionality
+        document.getElementById('submit-button').addEventListener('click', function() {
+            const password = document.getElementById('password').value;
+            const strengthText = document.getElementById('strength-text');
+            const strengthFill = document.getElementById('strength-fill');
+            let width = '0%';
+            let strength = '';
+
+            if (password) {
+                // Send password to the server for strength checking
+                fetch('/check-password', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ password: password })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    // Update UI based on the response
+                    strengthText.innerHTML = data.feedback.join('<br>');
+                    document.getElementById('strength').style.display = 'block'; // Show strength indicator
+                    document.querySelector('.meter').style.display = 'block'; // Show meter
+
+                    if (data.score === 3) {
+                        width = '100%';
+                        strength = 'strong';
+                    } else if (data.score === 2) {
+                        width = '50%';
+                        strength = 'medium';
+                    } else {
+                        width = '20%';
+                        strength = 'weak';
+                    }
+
+                    // Update the strength meter
+                    strengthFill.style.width = width;
+                    strengthFill.className = 'meter-fill ' + strength;
+                });
+            } else {
+                alert('Please enter a password.');
+            }
+        });
+    </script>
+</body>
+</html>
